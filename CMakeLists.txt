@@ -4,9 +4,18 @@ project(ubiquity_motor)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp geometry_msgs tf nav_msgs )
+find_package(catkin REQUIRED COMPONENTS 
+	roscpp 
+	geometry_msgs 
+	tf 
+	nav_msgs 
+	serial 
+	hardware_interface 
+	controller_manager)
 ## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
+find_package(Boost REQUIRED COMPONENTS 
+	system 
+	thread)
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -47,8 +56,8 @@ find_package(catkin REQUIRED COMPONENTS roscpp geometry_msgs tf nav_msgs )
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES Ubiquity
+  INCLUDE_DIRS include
+  LIBRARIES ubiquity_motor
 #  CATKIN_DEPENDS other_catkin_pkg
 #  DEPENDS system_lib
 )
@@ -62,21 +71,29 @@ catkin_package(
 include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 
 ## Declare a cpp library
-# add_library(Ubiquity
-#   src/${PROJECT_NAME}/Ubiquity.cpp
-# )
+add_library(ubiquity_motor
+  src/motor_command.cc src/motor_serial.cc src/motor_hardware.cc
+)
+target_link_libraries(ubiquity_motor
+ ${catkin_LIBRARIES}
+ ${Boost_LIBRARIES}
+)
 
 ## Declare a cpp executable
-add_executable(motor_node src/UbiquityMotor.cc src/crc8.c)
+add_executable(motor_node src/motor_node.cc src/motor_command.cc src/motor_serial.cc src/motor_hardware.cc)
+target_link_libraries(motor_node
+ ${catkin_LIBRARIES}
+ ${Boost_LIBRARIES}
+)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 #add_dependencies(controller)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(motor_node
-  ${catkin_LIBRARIES}
-)
+#target_link_libraries(motor_node
+ # ${catkin_LIBRARIES}
+#)
 
 #############
 ## Install ##
@@ -93,18 +110,18 @@ target_link_libraries(motor_node
 # )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS motor_node
+install(TARGETS ubiquity_motor
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 ## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  FILES_MATCHING PATTERN "*.h"
+  PATTERN ".svn" EXCLUDE
+)
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES
@@ -118,10 +135,13 @@ install(TARGETS motor_node
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_Ubiquity.cpp)
-# if(TARGET ${PROJECT_NAME}-test)
-#   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
-# endif()
+if(CATKIN_ENABLE_TESTING)
+	catkin_add_gtest(ubiquity_motor_tests 
+		test/motor_test.cc 
+		test/motor_command_test.cc
+		test/motor_serial_test.cc)
+	target_link_libraries(ubiquity_motor_tests  ubiquity_motor ${catkin_LIBRARIES})
+endif()
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
