@@ -1,5 +1,5 @@
 #include <ubiquity_motor/motor_hardware.h>
-#include <ubiquity_motor/motor_command.h>
+#include <ubiquity_motor/motor_message.h>
 #include <string>
 #include <boost/asio/io_service.hpp>
 #include <boost/thread.hpp>
@@ -22,6 +22,7 @@ void controlLoop(ros::Rate r,
 		clock_gettime(CLOCK_MONOTONIC, &current_time);
 		ros::Duration elapsed = ros::Duration(current_time.tv_sec - last_time.tv_sec + (current_time.tv_nsec - last_time.tv_nsec) / BILLION);
 		last_time = current_time;
+		robot.sendPid();
 		robot.readInputs();
 		cm.update(ros::Time::now(), elapsed);
 		robot.writeSpeeds();
@@ -36,8 +37,40 @@ main(int argc, char* argv[]) {
 	MotorHardware robot(nh);
 	controller_manager::ControllerManager cm(&robot,nh);
 
-	double controller_loop_rate;
 
+	int32_t pid_proportional;
+	int32_t pid_integral;
+	int32_t pid_derivative;
+	int32_t pid_denominator;
+
+	if (!nh.getParam("ubiquity_motor/pid_proportional", pid_proportional))
+	{
+		pid_proportional = 450;
+		nh.setParam("ubiquity_motor/pid_proportional", pid_proportional);
+	}
+
+	if (!nh.getParam("ubiquity_motor/pid_integral", pid_integral))
+	{
+		pid_integral = 120;
+		nh.setParam("ubiquity_motor/pid_integral", pid_integral);
+	}
+
+	if (!nh.getParam("ubiquity_motor/pid_derivative", pid_derivative))
+	{
+		pid_derivative = 70;
+		nh.setParam("ubiquity_motor/pid_derivative", pid_derivative);
+	}
+
+	if (!nh.getParam("ubiquity_motor/pid_denominator", pid_denominator))
+	{
+		pid_derivative = 1000;
+		nh.setParam("ubiquity_motor/pid_denominator", pid_denominator);
+	}
+
+	robot.setPid(pid_proportional,pid_integral,pid_derivative,pid_denominator);
+	robot.sendPid();
+	
+	double controller_loop_rate;
 	if (!nh.getParam("ubiquity_motor/controller_loop_rate", controller_loop_rate))
 	{
 		controller_loop_rate = 10;

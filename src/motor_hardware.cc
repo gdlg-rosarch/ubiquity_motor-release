@@ -24,12 +24,12 @@ FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
 CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN AiiiiiiiiiiiNY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **/
 #include <boost/assign.hpp>
 #include <ubiquity_motor/motor_hardware.h>
-#include <ubiquity_motor/motor_command.h>
+#include <ubiquity_motor/motor_message.h>
 
 #include <boost/math/special_functions/round.hpp>
 
@@ -39,6 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //17.2328767123
 // gear ratio of 4.29411764706:1
 #define TICS_PER_RADIAN 41.0058030317
+#define SECONDS_PER_VELOCITY_READ 10.0 //read = ticks / (100 ms), so we have scale of 10 for ticks/second
 
 MotorHardware::MotorHardware(ros::NodeHandle nh){
 	ros::V_string joint_names = boost::assign::list_of("left_wheel_joint")("right_wheel_joint");
@@ -89,15 +90,21 @@ MotorHardware::~MotorHardware(){
 
 void MotorHardware::readInputs(){
 	while(motor_serial_->commandAvailable()){
-		MotorCommand mc;
-		mc = motor_serial_-> receiveCommand();
-		if(mc.getType() == MotorCommand::TYPE_RESPONSE){
-			switch(mc.getRegister()){
-				case MotorCommand::REG_LEFT_ODOM:
-					joints_[0].position += mc.getData()/TICS_PER_RADIAN;
+		MotorMessage mm;
+		mm = motor_serial_-> receiveCommand();
+		if(mm.getType() == MotorMessage::TYPE_RESPONSE){
+			switch(mm.getRegister()){
+				case MotorMessage::REG_LEFT_ODOM:
+					joints_[0].position += mm.getData()/TICS_PER_RADIAN;
 					break;
-				case MotorCommand::REG_RIGHT_ODOM:
-					joints_[1].position += mc.getData()/TICS_PER_RADIAN;
+				case MotorMessage::REG_RIGHT_ODOM:
+					joints_[1].position += mm.getData()/TICS_PER_RADIAN;
+					break;
+			        case MotorMessage::REG_LEFT_SPEED_MEASURED:
+   				        joints_[0].velocity = mm.getData()*SECONDS_PER_VELOCITY_READ/TICS_PER_RADIAN;
+					break;
+			        case MotorMessage::REG_RIGHT_SPEED_MEASURED:
+				        joints_[1].velocity = mm.getData()*SECONDS_PER_VELOCITY_READ/TICS_PER_RADIAN;
 					break;
 			}
 		}
@@ -106,29 +113,74 @@ void MotorHardware::readInputs(){
 
 void MotorHardware::writeSpeeds(){
 	requestOdometry();
-	MotorCommand left;
-	left.setRegister(MotorCommand::REG_LEFT_SPEED_SET);
-	left.setType(MotorCommand::TYPE_WRITE);
-	left.setData(boost::math::lround(joints_[0].velocity_command*TICS_PER_RADIAN));
+	requestVelocity();
+	MotorMessage left;
+	left.setRegister(MotorMessage::REG_LEFT_SPEED_SET);
+	left.setType(MotorMessage::TYPE_WRITE);
+	left.setData(boost::math::lround(joints_[0].velocity_command*TICS_PER_RADIAN/SECONDS_PER_VELOCITY_READ));
 	motor_serial_->transmitCommand(left);
-	MotorCommand right;
-	right.setRegister(MotorCommand::REG_RIGHT_SPEED_SET);
-	right.setType(MotorCommand::TYPE_WRITE);
-	right.setData(boost::math::lround(joints_[1].velocity_command*TICS_PER_RADIAN));
+	MotorMessage right;
+	right.setRegister(MotorMessage::REG_RIGHT_SPEED_SET);
+	right.setType(MotorMessage::TYPE_WRITE);
+	right.setData(boost::math::lround(joints_[1].velocity_command*TICS_PER_RADIAN/SECONDS_PER_VELOCITY_READ));
 	motor_serial_->transmitCommand(right);
-	// ROS_ERROR("velocity_command %f rad/s %f rad/s", joints_[0].velocity_command, joints_[1].velocity_command);
+	//ROS_ERROR("velocity_command %f rad/s %f rad/s", joints_[0].velocity_command, joints_[1].velocity_command);
 	// ROS_ERROR("SPEEDS %d %d", left.getData(), right.getData());
 }
 
 void MotorHardware::requestOdometry(){
-	MotorCommand left;
-	left.setRegister(MotorCommand::REG_LEFT_ODOM);
-	left.setType(MotorCommand::TYPE_READ);
+	MotorMessage left;
+	left.setRegister(MotorMessage::REG_LEFT_ODOM);
+	left.setType(MotorMessage::TYPE_READ);
 	left.setData(0);
 	motor_serial_->transmitCommand(left);
-	MotorCommand right;
-	right.setRegister(MotorCommand::REG_RIGHT_ODOM);
-	right.setType(MotorCommand::TYPE_READ);
+	MotorMessage right;
+	right.setRegister(MotorMessage::REG_RIGHT_ODOM);
+	right.setType(MotorMessage::TYPE_READ);
 	right.setData(0);
 	motor_serial_->transmitCommand(right);
+}
+
+void MotorHardware::requestVelocity(){
+  MotorMessage left;
+  left.setRegister(MotorMessage::REG_LEFT_SPEED_MEASURED);
+  left.setType(MotorMessage::TYPE_READ);
+  left.setData(0);
+  motor_serial_->transmitCommand(left);
+  MotorMessage right;
+  right.setRegister(MotorMessage::REG_RIGHT_SPEED_MEASURED);
+  right.setType(MotorMessage::TYPE_READ);
+  right.setData(0);
+  motor_serial_->transmitCommand(right);
+}
+
+
+void MotorHardware::setPid(int32_t p_set, int32_t i_set, int32_t d_set, int32_t denominator_set){
+        p_value = p_set;
+        i_value = i_set;
+        d_value = d_set;
+        denominator_value = denominator_set;
+}
+
+void MotorHardware::sendPid() {
+	MotorMessage p;
+	p.setRegister(MotorMessage::REG_PARAM_P);
+	p.setType(MotorMessage::TYPE_WRITE);
+	p.setData(p_value);
+	motor_serial_->transmitCommand(p);
+	MotorMessage i;
+	i.setRegister(MotorMessage::REG_PARAM_I);
+	i.setType(MotorMessage::TYPE_WRITE);
+	i.setData(i_value);
+	motor_serial_->transmitCommand(i);
+	MotorMessage d;
+	d.setRegister(MotorMessage::REG_PARAM_D);
+	d.setType(MotorMessage::TYPE_WRITE);
+	d.setData(d_value);
+	motor_serial_->transmitCommand(d);
+	MotorMessage denominator;
+	denominator.setRegister(MotorMessage::REG_PARAM_C);
+	denominator.setType(MotorMessage::TYPE_WRITE);
+	denominator.setData(denominator_value);
+	motor_serial_->transmitCommand(denominator);
 }
