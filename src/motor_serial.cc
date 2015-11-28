@@ -33,6 +33,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <serial/serial.h>
 
 MotorSerial::MotorSerial(const std::string& port, uint32_t baud_rate, double loopRate){
+        have_input = false;
+
 	// Make sure baud rate is valid
 	switch (baud_rate) {
 		case 110 :
@@ -85,6 +87,7 @@ int MotorSerial::transmitCommand(MotorMessage command) {
 	// Make sure to lock mutex before accessing the input fifo
 	input_mtx_.lock();
 	this->input.push(command); // add latest command to end of fifo
+	this->have_input = true; //Used to avoid input locking
 	input_mtx_.unlock();
 	return 0;
 }
@@ -108,8 +111,14 @@ int MotorSerial::commandAvailable() {
 }
 
 int MotorSerial::inputAvailable() {
+        if (!this->have_input) {
+                return false;
+	}
 	input_mtx_.lock();
 	int out = !(this->input.empty());
+	if (!out) {
+	        this->have_input = false;
+	}
 	input_mtx_.unlock();
 	return out;
 }
@@ -132,21 +141,42 @@ void MotorSerial::appendOutput(MotorMessage command){
 }
 
 void MotorSerial::SerialThread(){
-	ros::Rate serial_loop_rate(100);
+	ros::Rate serial_loop_rate(1000);
 	try {
+ 	        std::vector<uint8_t> in(0);
+	        bool failed_update = false;
 		while(motors->isOpen() && ros::ok()){
-			while(motors->available() >= 9){
-				std::vector<uint8_t> in(0);
-				motors->read(in, 9);
-				// ROS_ERROR("Len:%d", (int) in.size());
+		        while(motors->available() >= (failed_update ? 1 : 9)){
+			        std::vector<uint8_t> innew(0);
+                                motors->read(innew, failed_update ? 1 : 9);
+				in.insert(in.end(), innew.begin(), innew.end());
+				while (in.size() > 9) {
+				        in.erase(in.begin());
+				}
+				//ROS_ERROR("Len:%d - fail %d  innew %d", (int) in.size(), failed_update, innew.size());
 				MotorMessage mc;
-				if (mc.deserialize(in) == 0) {
-					// ROS_ERROR("appendOutput");
+				int error_code = mc.deserialize(in);
+				if (error_code == 0) {
+				        //ROS_ERROR("appendOutput");
 					appendOutput(mc);
+					failed_update = false;
+				} else if (error_code == 1) {
+                                        failed_update = true;
+					//ROS_ERROR("Invalid delim");
+					char str[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+					for (int i = 0; i < in.size() && i < 9; i++) {
+					  str[i] = in.at(i);
+					}
+					ROS_ERROR("REJECT: %s", str);
+				} else {
+				        failed_update = true;
+					ROS_ERROR("DESERIALIZATION ERROR! - %d", error_code);
 				}
 			}
 
-			if(inputAvailable()){
+			bool did_update = false;
+			while(inputAvailable()){
+			        did_update = true;
 				std::vector<uint8_t> out(9);
 				out = getInputCommand().serialize();
 				// ROS_ERROR("out %x %x %x %x %x %x %x %x %x", 
@@ -160,6 +190,10 @@ void MotorSerial::SerialThread(){
 				// 	out[7],
 				// 	out[8]);
 				motors->write(out);
+			}
+
+			if (did_update) {
+                                motors->flushOutput();
 			}
 
 			// boost::posix_time::milliseconds loopDelay(10);
