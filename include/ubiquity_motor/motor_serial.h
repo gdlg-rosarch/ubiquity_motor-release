@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2015, Ubiquity Robotics
+Copyright (c) 2016, Ubiquity Robotics
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -43,10 +43,9 @@ class MotorSerial
 		MotorSerial(const std::string& port = "/dev/ttyUSB0" , uint32_t baud_rate = 9600, double loopRate = 100);
 		~MotorSerial();
 
-		boost::mutex input_mtx_;
-		boost::mutex output_mtx_;
-		
 		int transmitCommand(MotorMessage command);
+		int transmitCommands(std::vector<MotorMessage> commands);
+		
 		MotorMessage receiveCommand();
 		int commandAvailable();
 
@@ -55,10 +54,20 @@ class MotorSerial
 		
 		std::string _port;
 		uint32_t _baud_rate;
-                
+
+		// bool to check for input to avoid unnecessary locking                
 		bool have_input;
-		std::queue<MotorMessage> input;
-		std::queue<MotorMessage> output;
+		//locking mutex for the input queue
+		boost::mutex input_mtx_;
+		// queue for messages that are to be transmitted
+		std::queue<MotorMessage> input; 
+		
+		// bool to check for output to avoid unnecessary locking                
+		bool have_output;
+		//locking mutex for the output queue
+		boost::mutex output_mtx_;
+		//queue for messages that have been received
+		std::queue<MotorMessage> output; 
 
 		boost::thread* serial_thread;
 		ros::Rate* serial_loop_rate;
@@ -67,6 +76,7 @@ class MotorSerial
 		MotorMessage getInputCommand();
 		void appendOutput(MotorMessage command);
 
+		// Thread that has manages the serial port 
 		void SerialThread();
 };
 
