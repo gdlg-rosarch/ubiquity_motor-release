@@ -6,15 +6,13 @@ project(ubiquity_motor)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS 
 	roscpp 
-	geometry_msgs 
-	tf 
+	geometry_msgs  
 	nav_msgs 
 	serial 
 	hardware_interface 
 	controller_manager)
 ## System dependencies are found with CMake's conventions
-find_package(Boost REQUIRED COMPONENTS 
-	system 
+find_package(Boost REQUIRED COMPONENTS  
 	thread)
 
 
@@ -65,7 +63,7 @@ catkin_package(
 ###########
 ## Build ##
 ###########
-
+   	
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
@@ -80,8 +78,9 @@ target_link_libraries(ubiquity_motor
 )
 
 ## Declare a cpp executable
-add_executable(motor_node src/motor_node.cc src/motor_message.cc src/motor_serial.cc src/motor_hardware.cc)
+add_executable(motor_node src/motor_node.cc)
 target_link_libraries(motor_node
+ ubiquity_motor
  ${catkin_LIBRARIES}
  ${Boost_LIBRARIES}
 )
@@ -136,11 +135,15 @@ install(DIRECTORY include/${PROJECT_NAME}/
 
 ## Add gtest based cpp test target and link libraries
 if(CATKIN_ENABLE_TESTING)
-	catkin_add_gtest(ubiquity_motor_tests 
-		test/motor_test.cc 
-		test/motor_message_test.cc
+
+	catkin_add_gtest(ubiquity_motor_message_test
+		test/motor_message_test.cc)
+	target_link_libraries(ubiquity_motor_message_test  ubiquity_motor ${catkin_LIBRARIES})
+
+	catkin_add_gtest(ubiquity_motor_serial_test
 		test/motor_serial_test.cc)
-	target_link_libraries(ubiquity_motor_tests  ubiquity_motor ${catkin_LIBRARIES})
+	target_link_libraries(ubiquity_motor_serial_test  ubiquity_motor util ${catkin_LIBRARIES})
+
 endif()
 
 ## Add folders to be run by python nosetests

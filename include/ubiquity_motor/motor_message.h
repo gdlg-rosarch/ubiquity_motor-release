@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2015, Ubiquity Robotics
+Copyright (c) 2016, Ubiquity Robotics
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -107,16 +107,16 @@ class MotorMessage{
 		};
 
 		void setType(MotorMessage::MessageTypes type);
-		MotorMessage::MessageTypes getType();
+		MotorMessage::MessageTypes getType() const;
 
 		void setRegister(MotorMessage::Registers reg);
-		MotorMessage::Registers getRegister();
+		MotorMessage::Registers getRegister() const;
 
 		void setData(int32_t data);
-		int32_t getData();
+		int32_t getData() const;
 
-		std::vector<uint8_t> serialize();
-		int deserialize(std::vector<uint8_t> &serialized);
+		std::vector<uint8_t> serialize() const;
+		int deserialize(const std::vector<uint8_t> &serialized);
 
 
 	private:
@@ -130,10 +130,11 @@ class MotorMessage{
 		const static uint8_t valid_types[]; 
 		const static uint8_t valid_registers[];
 
-		int verifyType(uint8_t t);
-		int verifyRegister(uint8_t r);
+		static int verifyType(uint8_t t);
+		static int verifyRegister(uint8_t r);
 
-		uint8_t generateChecksum(std::vector<uint8_t> data);
+		static uint8_t generateChecksum(const std::vector<uint8_t> &data);
+
 };
 
 #endif
