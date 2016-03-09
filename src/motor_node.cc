@@ -1,35 +1,61 @@
+/**
+Copyright (c) 2016, Ubiquity Robotics
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+* Neither the name of ubiquity_motor nor the names of its
+  contributors may be used to endorse or promote products derived from
+  this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**/
+
 #include <ubiquity_motor/motor_hardware.h>
 #include <ubiquity_motor/motor_message.h>
 #include <string>
-#include <boost/asio/io_service.hpp>
 #include <boost/thread.hpp>
 #include <time.h>
 #include "controller_manager/controller_manager.h"
-#include <boost/asio/io_service.hpp>
 #include <ros/ros.h>
 
 static const double BILLION = 1000000000.0;
+struct timespec last_time;
+struct timespec current_time;
 
-void controlLoop(ros::Rate r,
-	MotorHardware &robot,
-	controller_manager::ControllerManager &cm){
 
-	struct timespec last_time;
-	struct timespec current_time;
-	clock_gettime(CLOCK_MONOTONIC, &last_time);
+// void controlLoop(
+// 	MotorHardware &robot,
+// 	controller_manager::ControllerManager &cm,
+// 	timespec &last_time,
+// 	timespec &current_time){
+	
+// 	clock_gettime(CLOCK_MONOTONIC, &current_time);
+// 	ros::Duration elapsed = ros::Duration(current_time.tv_sec - last_time.tv_sec + (current_time.tv_nsec - last_time.tv_nsec) / BILLION);
+// 	last_time = current_time;
+// 	robot.sendPid();
+// 	robot.readInputs();
+// 	cm.update(ros::Time::now(), elapsed);
+// 	robot.writeSpeeds();	
 
-	while (ros::ok()) {
-		clock_gettime(CLOCK_MONOTONIC, &current_time);
-		ros::Duration elapsed = ros::Duration(current_time.tv_sec - last_time.tv_sec + (current_time.tv_nsec - last_time.tv_nsec) / BILLION);
-		last_time = current_time;
-		robot.sendPid();
-		robot.readInputs();
-		cm.update(ros::Time::now(), elapsed);
-		robot.writeSpeeds();
-		r.sleep();
-	}
-
-}
+// }
 
 main(int argc, char* argv[]) {
 	ros::init(argc, argv, "motor_node");
@@ -37,6 +63,8 @@ main(int argc, char* argv[]) {
 	MotorHardware robot(nh);
 	controller_manager::ControllerManager cm(&robot,nh);
 
+	ros::AsyncSpinner spinner(1);
+	spinner.start();
 
 	int32_t pid_proportional;
 	int32_t pid_integral;
@@ -78,8 +106,21 @@ main(int argc, char* argv[]) {
 	}
 
 	ros::Rate r(controller_loop_rate);
+	robot.requestVersion();
 
-	boost::thread controlLoopThread(controlLoop, r , boost::ref(robot), boost::ref(cm));
 
-	ros::spin();
+	struct timespec last_time;
+	struct timespec current_time;
+	clock_gettime(CLOCK_MONOTONIC, &last_time);
+
+	while (ros::ok()) {
+		clock_gettime(CLOCK_MONOTONIC, &current_time);
+		ros::Duration elapsed = ros::Duration(current_time.tv_sec - last_time.tv_sec + (current_time.tv_nsec - last_time.tv_nsec) / BILLION);
+		last_time = current_time;
+		robot.sendPid();
+		robot.readInputs();
+		cm.update(ros::Time::now(), elapsed);
+		robot.writeSpeeds();
+		r.sleep();
+	}
 }

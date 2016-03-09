@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2015, Ubiquity Robotics
+Copyright (c) 2016, Ubiquity Robotics
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -87,7 +87,7 @@ void MotorMessage::setType(MotorMessage::MessageTypes type){
   }
 }
 
-MotorMessage::MessageTypes MotorMessage::getType(){
+MotorMessage::MessageTypes MotorMessage::getType() const{
   if (verifyType(this->type)){
     return static_cast<MotorMessage::MessageTypes>(this->type);
   }
@@ -99,7 +99,7 @@ void MotorMessage::setRegister(MotorMessage::Registers reg){
   }
 }
 
-MotorMessage::Registers MotorMessage::getRegister(){
+MotorMessage::Registers MotorMessage::getRegister() const{
   return static_cast<MotorMessage::Registers>(this->register_addr);
 }
 
@@ -115,7 +115,7 @@ void MotorMessage::setData(int32_t data){
   this->data[0] = (data >> 24) & 0xFF;
 }
 
-int32_t MotorMessage::getData(){
+int32_t MotorMessage::getData() const{
   // Take big endian (network byte order) elements and return 32 bit int
   return (this->data[0] << 24)
                | (this->data[1] << 16)
@@ -123,7 +123,7 @@ int32_t MotorMessage::getData(){
                | (this->data[3] << 0);
 }
 
-std::vector<uint8_t> MotorMessage::serialize(){
+std::vector<uint8_t> MotorMessage::serialize() const{
   std::vector<uint8_t> out(9);
   out[0] = delimeter;
   out[1] = protocol_version;
@@ -137,7 +137,7 @@ std::vector<uint8_t> MotorMessage::serialize(){
   return out;
 }
 
-int MotorMessage::deserialize(std::vector<uint8_t> &serialized){
+int MotorMessage::deserialize(const std::vector<uint8_t> &serialized){
   if(serialized[0] == delimeter) {
     if (serialized[1] == protocol_version) {
       if (generateChecksum(serialized) == serialized[8]) {
@@ -173,9 +173,8 @@ int MotorMessage::deserialize(std::vector<uint8_t> &serialized){
   // 3 bad checksum
   // 4 bad type
   // 5 bad register
-} 
-
-int MotorMessage::verifyType(uint8_t t){
+}
+int MotorMessage::verifyType(uint8_t t) {
   //Return 1 good
   //Return 0 for bad
   for (int i = 0; i < sizeof(valid_types) / sizeof(valid_types[0]); ++i)
@@ -186,7 +185,7 @@ int MotorMessage::verifyType(uint8_t t){
   return 0;
 }
 
-int MotorMessage::verifyRegister(uint8_t r){
+int MotorMessage::verifyRegister(uint8_t r) {
   //Return 1 good
   //Return 0 for bad
   for (int i = 0; i < sizeof(valid_registers) / sizeof(valid_registers[0]); ++i)
@@ -197,7 +196,7 @@ int MotorMessage::verifyRegister(uint8_t r){
   return 0;
 }
 
-uint8_t MotorMessage::generateChecksum(std::vector<uint8_t> data) {
+uint8_t MotorMessage::generateChecksum(const std::vector<uint8_t> &data) {
   int sum = data [1] + data[2] + data[3] + data[4] + data[5] + data[6] + data[7];
 
   if (sum > 0xFF) {

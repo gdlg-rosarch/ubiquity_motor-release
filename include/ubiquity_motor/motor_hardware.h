@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2015, Ubiquity Robotics
+Copyright (c) 2016, Ubiquity Robotics
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -51,7 +51,6 @@ class MotorHardware : public hardware_interface::RobotHW {
 		void setPid(int32_t p, int32_t i, int32_t d, int32_t denominator);
 		void sendPid();
 	private:
-		ros::NodeHandle n;
 		hardware_interface::JointStateInterface joint_state_interface_;
 		hardware_interface::VelocityJointInterface velocity_joint_interface_;
 
