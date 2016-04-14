@@ -39,6 +39,28 @@ TEST(ubiquity_motor_message, motor_message_commandtype) {
 
 	mc.setType(MotorMessage::TYPE_WRITE);
 	ASSERT_EQ(MotorMessage::TYPE_WRITE, mc.getType());
+
+	mc.setType(MotorMessage::TYPE_RESPONSE);
+	ASSERT_EQ(MotorMessage::TYPE_RESPONSE, mc.getType());
+
+	mc.setType(MotorMessage::TYPE_ERROR);
+	ASSERT_EQ(MotorMessage::TYPE_ERROR, mc.getType());
+}
+
+TEST(ubiquity_motor_message, motor_message_commandtype_values) {
+	MotorMessage mc;
+
+	mc.setType(static_cast<MotorMessage::MessageTypes>(0xAA));
+	ASSERT_EQ(MotorMessage::TYPE_READ, mc.getType());
+
+	mc.setType(static_cast<MotorMessage::MessageTypes>(0xBB));
+	ASSERT_EQ(MotorMessage::TYPE_WRITE, mc.getType());
+
+	mc.setType(static_cast<MotorMessage::MessageTypes>(0xCC));
+	ASSERT_EQ(MotorMessage::TYPE_RESPONSE, mc.getType());
+
+	mc.setType(static_cast<MotorMessage::MessageTypes>(0xDD));
+	ASSERT_EQ(MotorMessage::TYPE_ERROR, mc.getType());
 }
 
 TEST(ubiquity_motor_message, motor_message_commandtype_invalid) {
@@ -69,6 +91,19 @@ TEST(ubiquity_motor_message, motor_message_register) {
 	mc.setRegister(MotorMessage::REG_BRAKE_STOP);
 	ASSERT_EQ(MotorMessage::REG_BRAKE_STOP, mc.getRegister());
 	ASSERT_NE(MotorMessage::REG_STOP_START, mc.getRegister());
+}
+
+TEST(ubiquity_motor_message, motor_message_register_values) {
+	MotorMessage mc;
+
+	mc.setRegister(static_cast<MotorMessage::Registers>(0x01));
+	ASSERT_EQ(MotorMessage::REG_BRAKE_STOP, mc.getRegister());
+
+	mc.setRegister(static_cast<MotorMessage::Registers>(0x10));
+	ASSERT_EQ(MotorMessage::REG_ERROR_COUNT, mc.getRegister());
+
+	mc.setRegister(static_cast<MotorMessage::Registers>(0x0B));
+	ASSERT_EQ(MotorMessage::REG_LEFT_ODOM, mc.getRegister());
 }
 
 TEST(ubiquity_motor_message, motor_message_register_invalid) {
@@ -203,6 +238,35 @@ TEST(ubiquity_motor_message, motor_message_deserialize_good) {
 	ASSERT_EQ(MotorMessage::TYPE_WRITE, mc.getType());
 	ASSERT_EQ(MotorMessage::REG_LEFT_SPEED_SET, mc.getRegister());
 }
+
+TEST(ubiquity_motor_message, motor_message_deserialize_delimeter_in_data) {
+	MotorMessage mc;
+
+	//Test good message
+	uint8_t arr[] = {0x7E, 0x02, 0xBB, 0x07, 0x00, 0x00, 0x01, 0x7E, 0xBC};
+
+	std::vector<uint8_t> input(arr, arr + sizeof(arr)/ sizeof(uint8_t));
+
+	ASSERT_EQ(0, mc.deserialize(input));
+	ASSERT_EQ(382, mc.getData());
+	ASSERT_EQ(MotorMessage::TYPE_WRITE, mc.getType());
+	ASSERT_EQ(MotorMessage::REG_LEFT_SPEED_SET, mc.getRegister());
+}
+
+// TEST(ubiquity_motor_message, motor_message_deserialize_double_delimeter) {
+// 	MotorMessage mc;
+
+// 	//Test bad delimeter with good checksum
+// 	uint8_t arr[] = {0x7E, 0x7E, 0x02, 0xBB, 0x07, 0x00, 0x00, 0x01, 0x2C, 0x0E};
+
+// 	std::vector<uint8_t> input(arr, arr + sizeof(arr)/ sizeof(uint8_t));
+
+// 	ASSERT_EQ(0, mc.deserialize(input));
+// 	ASSERT_EQ(300, mc.getData());
+// 	ASSERT_EQ(MotorMessage::TYPE_WRITE, mc.getType());
+// 	ASSERT_EQ(MotorMessage::REG_LEFT_SPEED_SET, mc.getRegister());
+// }
+
 
 TEST(ubiquity_motor_message, motor_message_deserialize_bad_delimeter) {
 	MotorMessage mc;
