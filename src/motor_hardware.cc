@@ -96,8 +96,8 @@ void MotorHardware::readInputs(){
 		if(mm.getType() == MotorMessage::TYPE_RESPONSE){
 			switch(mm.getRegister()){
 				case MotorMessage::REG_FIRMWARE_VERSION:
-					if (mm.getData() != CURRENT_FIRMWARE_VERSION) { 
-						ROS_FATAL("Firmware version %d, expect %d",
+					if (!mm.getData() > CURRENT_FIRMWARE_VERSION) { 
+						ROS_FATAL("Firmware version %d, expect %d or above",
 							mm.getData(), CURRENT_FIRMWARE_VERSION);
 					}
 					else {
@@ -257,6 +257,34 @@ void MotorHardware::sendPid() {
 	denominator.setType(MotorMessage::TYPE_WRITE);
 	denominator.setData(denominator_value);
 	commands.push_back(denominator);
+
+	motor_serial_->transmitCommands(commands);
+}
+
+void MotorHardware::setDebugLeds(bool led_1, bool led_2) {
+	std::vector<MotorMessage> commands;
+	
+	MotorMessage led1;
+	led1.setRegister(MotorMessage::REG_LED_1);
+	led1.setType(MotorMessage::TYPE_WRITE);
+	if(led_1) {
+		led1.setData(0x00000001);
+	}
+	else {
+		led1.setData(0x00000000);
+	}
+	commands.push_back(led1);
+
+	MotorMessage led2;
+	led2.setRegister(MotorMessage::REG_LED_2);
+	led2.setType(MotorMessage::TYPE_WRITE);
+	if(led_2) {
+		led2.setData(0x00000001);
+	}
+	else {
+		led2.setData(0x00000000);
+	}
+	commands.push_back(led2);
 
 	motor_serial_->transmitCommands(commands);
 }
