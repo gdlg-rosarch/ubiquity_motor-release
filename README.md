@@ -1,3 +1,26 @@
+## ubiquity_motor (indigo) - 0.5.0-0
+
+The packages in the `ubiquity_motor` repository were released into the `indigo` distro by running `/usr/bin/bloom-release ubiquity_motor --track indigo --rosdistro indigo` on `Mon, 05 Sep 2016 06:37:23 -0000`
+
+The `ubiquity_motor` package was released.
+
+Version of package(s) in repository `ubiquity_motor`:
+
+- upstream repository: https://github.com/UbiquityRobotics/ubiquity_motor.git
+- release repository: https://github.com/UbiquityRobotics-release/ubiquity_motor-release.git
+- rosdistro version: `0.4.1-0`
+- old version: `0.4.1-0`
+- new version: `0.5.0-0`
+
+Versions of tools used:
+
+- bloom version: `0.5.22`
+- catkin_pkg version: `0.2.10`
+- rosdep version: `0.11.5`
+- rosdistro version: `0.4.7`
+- vcstools version: `0.1.39`
+
+
 ## ubiquity_motor (indigo) - 0.4.1-0
 
 The packages in the `ubiquity_motor` repository were released into the `indigo` distro by running `/usr/bin/bloom-release ubiquity_motor --track indigo --rosdistro indigo --edit` on `Thu, 14 Apr 2016 17:31:23 -0000`
